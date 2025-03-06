@@ -29,7 +29,7 @@ pub use event_emitter::{
 ///
 /// ```
 /// use std::sync::Arc;
-/// use event_emitter::{Callback, EventPayload};
+/// use events::{Callback, EventPayload};
 ///
 /// let payload: EventPayload<String> = Arc::new(String::from("Emitting value"));
 /// ```
@@ -42,7 +42,7 @@ pub type EventPayload<T> = Arc<T>;
 ///
 /// ```
 /// use std::sync::Arc;
-/// use event_emitter::{Callback, EventPayload};
+/// use events::{Callback, EventPayload};
 ///
 /// let callback: Callback<String> = Arc::new(move |payload: &EventPayload<String>| {
 ///     // Use payload reference here

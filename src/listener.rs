@@ -15,7 +15,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     ///
     /// ```
     /// use std::sync::Arc;
-    /// use event_emitter::{Callback, EventPayload, Listener};
+    /// use events::{Callback, EventPayload, Listener};
     ///
     /// let listener = Listener::new(
     ///     Arc::new(move |payload: &EventPayload<String>| {
@@ -39,7 +39,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     ///
     /// ```
-    /// use event_emitter::{Callback, EventPayload, Listener};
+    /// use events::{Callback, EventPayload, Listener};
     ///
     /// let mut listener = Listener::default();
     /// listener.call(&EventPayload::new(String::new()));
@@ -60,7 +60,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     ///
     /// ```
-    /// use event_emitter::{Callback, EventPayload, Listener};
+    /// use events::{Callback, EventPayload, Listener};
     ///
     /// let mut listener = Listener::default();
     /// # tokio_test::block_on(async {
@@ -90,7 +90,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     ///
     /// ```
-    /// use event_emitter::{EventPayload, Listener};
+    /// use events::{EventPayload, Listener};
     ///
     /// let mut listener = Listener::default();
     /// # tokio_test::block_on(async {
@@ -147,7 +147,7 @@ impl<T: Send + Sync + 'static> Default for Listener<T> {
     /// # Example
     ///
     /// ```
-    /// use event_emitter::EventEmitter;
+    /// use events::EventEmitter;
     ///
     /// // Type annotation required
     /// let emitter = EventEmitter::<String>::default();

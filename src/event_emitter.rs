@@ -40,7 +40,7 @@ impl<T: Send + Sync> Default for EventEmitter<T>{
     /// # Example
     ///
     /// ```
-    /// use event_emitter::{EventEmitter, EventHandler};
+    /// use events::{EventEmitter, EventHandler};
     ///
     /// let emitter: EventEmitter<String> = EventEmitter::default();
     /// assert_eq!(emitter.max_listeners(), 10);
@@ -60,7 +60,7 @@ impl<T: Send + Sync> EventEmitter<T> {
     /// ```
     /// use std::sync::Arc;
     /// use dashmap::DashMap;
-    /// use event_emitter::{EventEmitter, EventHandler, Listener};
+    /// use events::{EventEmitter, EventHandler, Listener};
     ///
     /// let mut emitter: EventEmitter<String> = EventEmitter::default();
     ///  if let Some(events_map) = Arc::get_mut(emitter.events_mut()){
@@ -77,7 +77,7 @@ impl<T: Send+ Sync> EventHandler<T> for EventEmitter<T> {
     ///
     /// ```
     /// use std::sync::Arc;
-    /// use event_emitter::{EventEmitter, EventHandler};
+    /// use events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter: EventEmitter<String> = EventEmitter::default();
     /// emitter.add_listener("event_one", Arc::new(|_|{})).expect("Failed to add");
@@ -92,7 +92,7 @@ impl<T: Send+ Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     ///
     /// ```
-   /// use event_emitter::{EventEmitter, EventHandler};
+   /// use events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter: EventEmitter<String> = EventEmitter::default();
     /// emitter.set_max_listeners(4);
@@ -104,7 +104,7 @@ impl<T: Send+ Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     ///
     /// ```
-   /// use event_emitter::{EventEmitter, EventHandler};
+   /// use events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter: EventEmitter<String> = EventEmitter::default();
     /// assert_eq!(emitter.max_listeners(), 10); // 10 is max_listeners default
