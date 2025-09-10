@@ -282,7 +282,7 @@ mod emitting_async_events {
 
             for _ in 0..10 {
                 assert!(
-                    emitter.emit_async("async_event", test_string_payload("Async Test"), false).is_ok()
+                    emitter.emit_async("async_event", test_string_payload("Async Test"), false).await.is_ok()
                 );
                 sleep(Duration::from_millis(100)).await;
             }
@@ -311,7 +311,7 @@ mod emitting_async_events {
 
             for _ in 0..5{
                 assert!(
-                    emitter.emit_async("async_event", test_string_payload(""), false).is_ok()
+                    emitter.emit_async("async_event", test_string_payload(""), false).await.is_ok()
                 );
                 sleep(Duration::from_millis(100)).await; // Multiple emit rely on same Mutex for test
             }
@@ -338,7 +338,7 @@ mod emitting_async_events {
             );
 
             assert!(
-                emitter.emit_async("final_async_event", test_string_payload(""), false).is_ok()
+                emitter.emit_async("final_async_event", test_string_payload(""), false).await.is_ok()
             );
             sleep(Duration::from_millis(100)).await;
         }
@@ -452,7 +452,7 @@ mod emitting_async_final_events {
             assert!(emitter.add_listener("final_async_event", Arc::new(|_| {})).is_ok());
 
             assert!(
-                emitter.emit_final_async("final_async_event", test_string_payload(""), false).is_ok()
+                emitter.emit_final_async("final_async_event", test_string_payload(""), false).await.is_ok()
             );
         }
         assert!(!emitter.has_listener("final_async_event"), "Final async emit did not remove listeners");
@@ -466,7 +466,7 @@ mod emitting_async_final_events {
             assert!(emitter.add_limited_listener("final_async_event", Arc::new(|_| {}), 5).is_ok());
 
             assert!(
-                emitter.emit_final_async("final_async_event", test_string_payload(""), false).is_ok()
+                emitter.emit_final_async("final_async_event", test_string_payload(""), false).await.is_ok()
             );
         }
         assert!(!emitter.has_listener("final_async_event"), "Final async emit did not remove limited listeners");

@@ -54,7 +54,7 @@ mod primitive_data_payloads {
 
                 for _ in 0..10 {
                     assert!(
-                        emitter.emit_async("async_event", test_int_payload(24), false).is_ok()
+                        emitter.emit_async("async_event", test_int_payload(24), false).await.is_ok()
                     );
                     sleep(Duration::from_millis(100)).await;
                 }
@@ -110,7 +110,7 @@ mod primitive_data_payloads {
 
                 for _ in 0..10 {
                     assert!(
-                        emitter.emit_async("async_event", test_bool_payload(false), false).is_ok()
+                        emitter.emit_async("async_event", test_bool_payload(false), false).await.is_ok()
                     );
                     sleep(Duration::from_millis(100)).await;
                 }
@@ -172,7 +172,7 @@ mod binary_payload {
 
             for _ in 0..10 {
                 assert!(
-                    emitter.emit_async("async_event", test_binary_payload("Async Test"), false).is_ok()
+                    emitter.emit_async("async_event", test_binary_payload("Async Test"), false).await.is_ok()
                 );
                 sleep(Duration::from_millis(100)).await;
             }
@@ -246,7 +246,7 @@ mod custom_payload {
 
             for val in 0..10 {
                 assert!(
-                    emitter.emit_async("async_event", test_custom_payload("custom_async", val as u32), false).is_ok()
+                    emitter.emit_async("async_event", test_custom_payload("custom_async", val as u32), false).await.is_ok()
                 );
                 sleep(Duration::from_millis(100)).await;
             }
