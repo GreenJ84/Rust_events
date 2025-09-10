@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use dashmap::DashMap;
+use futures::future::{BoxFuture, join_all};
+
 
 use crate::event_handler::EventHandler;
 use crate::{Callback, EventError, EventPayload};
@@ -191,35 +193,44 @@ impl<T: Send+ Sync> EventHandler<T> for EventEmitter<T> {
     ///
     /// Parallel Async: (parallel == true)
     ///  - Tasks run in parallel on different CPU cores
-    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> Result<(), EventError> {
-        if let Some(mut entry) = self.events.get_mut(event_name) {
-            for listener in entry.iter_mut().rev() {
-                if parallel {
-                    listener.background_call(&payload);
-                } else {
-                    listener.blocking_call(&payload);
-                }
-            }
+    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<Result<(), EventError>> {
+        Box::pin(async move {
+            if let Some(mut entry) = self.events.get_mut(event_name) {
+                let handles = entry.iter_mut()
+                    .filter_map(|listener| {
+                        if parallel {
+                            listener.background_call(&payload)
+                        } else {
+                            listener.blocking_call(&payload)
+                        }
+                    });
+                join_all(handles).await;
 
-            entry.retain(|listener| !listener.at_limit());
-            return Ok(())
-        }
-        Err(EventError::EventNotFound)
+                entry.retain(|listener| !listener.at_limit());
+                Ok(())
+            } else {
+                Err(EventError::EventNotFound)
+            }
+        })
     }
 
-    fn emit_final_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> Result<(), EventError> {
-        if self.events_mut().contains_key(event_name) {
-            for listener in self.events_mut().get_mut(event_name).unwrap().iter_mut() {
-                if parallel {
-                    listener.background_call(&payload);
-                } else {
-                    listener.blocking_call(&payload);
-                }
+    fn emit_final_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<Result<(), EventError>> {
+        Box::pin(async move {
+            if let Some(mut entry) = self.events.get_mut(event_name) {
+                let handles = entry.iter_mut()
+                    .filter_map(|listener| {
+                        if parallel {
+                            listener.background_call(&payload)
+                        } else {
+                            listener.blocking_call(&payload)
+                        }
+                    });
+                join_all(handles).await;
+            } else {
+                return Err(EventError::EventNotFound);
             }
-
             self.events_mut().remove(event_name);
-            return Ok(());
-        }
-        Err(EventError::EventNotFound)
+            Ok(())
+        })
     }
 }
