@@ -1,12 +1,13 @@
 use std::fmt::{Debug, Formatter};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use tokio::task::JoinHandle;
 
 use crate::{Callback, EventPayload};
 
 /// A Struct that is used to enact upon an emit Event
 pub struct Listener<T> {
     callback: Callback<T>,
-    lifetime: Option<Arc<Mutex<u64>>>,
+    lifetime: Option<Arc<AtomicU64>>,
 }
 impl<T: Send + Sync + 'static> Listener<T> {
     /// Constructs a new `Listener<T>` from a given a `Callback<T>` and lifetime `Option<u64>`
@@ -26,7 +27,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     pub fn new(callback: Callback<T>, lifetime: Option<u64>) -> Self {
         if let Some(limit) = lifetime {
-            return Self { callback, lifetime: Some(Arc::new(Mutex::new(limit))) };
+            return Self { callback, lifetime: Some(Arc::new(AtomicU64::new(limit))) };
         }
         Self { callback, lifetime: None }
     }
@@ -46,8 +47,11 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     pub fn call(&mut self, payload: &EventPayload<T>) {
         if let Some(ref lifetime) = self.lifetime {
-            let mut count = lifetime.lock().unwrap();
-            *count -= 1;
+            let prev = lifetime.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| if x > 0 { Some(x - 1) } else { Some(0) }).unwrap_or(0);
+            if prev == 0 {
+                // At limit, do not call callback
+                return;
+            }
         }
         (self.callback)(payload);
     }
@@ -67,19 +71,23 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// listener.background_call(&EventPayload::new(String::new()));
     /// # })
     /// ```
-    pub fn background_call(&mut self, payload: &EventPayload<T>) {
+    pub fn background_call(&mut self, payload: &EventPayload<T>) -> Option<JoinHandle<()>> {
         if let Some(ref lifetime) = self.lifetime {
-            let mut count = lifetime.lock().unwrap();
-            *count -= 1;
-        }
-
-        tokio::spawn({
-            let callback = Arc::clone(&self.callback);
-            let payload = Arc::clone(&payload);
-            async move {
-                callback(&payload);
+            let prev = lifetime.fetch_update(
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+                |x| if x > 0 { Some(x - 1) } else { Some(0) }
+            ).unwrap_or(0);
+            if prev == 0 {
+                // At limit, do not call callback
+                return None;
             }
-        });
+        }
+        let callback = Arc::clone(&self.callback);
+        let payload = Arc::clone(&payload);
+        Some(tokio::spawn(async move {
+            callback(&payload);
+        }))
     }
 
     /// Asynchronously run the callback for a `Listener<T>` ana emitted event payload within a blocking thread pool. <br/>
@@ -97,24 +105,30 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// listener.blocking_call(&EventPayload::new(String::new()));
     /// # })
     /// ```
-    pub fn blocking_call(&mut self, payload: &EventPayload<T>) {
+    pub fn blocking_call(&mut self, payload: &EventPayload<T>) -> Option<JoinHandle<()>> {
         if let Some(ref lifetime) = self.lifetime {
-            let mut count = lifetime.lock().unwrap();
-            *count -= 1;
-        }
+            let prev = lifetime.fetch_update(
+                    Ordering::SeqCst,
+                    Ordering::SeqCst,
+                    |x| if x > 0 { Some(x - 1) } else { Some(0) }
+                ).unwrap_or(0);
 
-        tokio::task::spawn_blocking({
-            let callback = Arc::clone(&self.callback);
-            let payload = Arc::clone(&payload);
-            move || { callback(&payload) }
-        });
+            if prev == 0 {
+                // At limit, do not call callback
+                return None;
+            }
+        }
+        let callback = Arc::clone(&self.callback);
+        let payload = Arc::clone(&payload);
+        Some(tokio::task::spawn_blocking(move || {
+            callback(&payload)
+        }))
     }
 
     /// Check whether the `Listener<T>` has fulfilled its lifetime.
     pub fn at_limit(&self) -> bool {
         if let Some(ref lifetime) = self.lifetime {
-            let count = lifetime.lock().unwrap();
-            return *count == 0;
+            return lifetime.load(Ordering::SeqCst) == 0;
         }
         false
     }
@@ -128,17 +142,13 @@ impl<T:  Send + Sync + 'static> Clone for Listener<T> {
     fn clone(&self) -> Self {
         Self {
             callback: Arc::clone(&self.callback),
-            lifetime: if let Some(limit) = &self.lifetime {
-                Some(Arc::clone(limit))
-            } else { None },
+            lifetime: self.lifetime.as_ref().map(|limit| Arc::clone(limit)),
         }
     }
 
     fn clone_from(&mut self, source: &Self) {
         self.callback = Arc::clone(&source.callback);
-        self.lifetime = if let Some(limit) = &source.lifetime {
-            Some(Arc::clone(limit))
-        } else { None };
+        self.lifetime = source.lifetime.as_ref().map(|limit| Arc::clone(limit));
     }
 }
 impl<T: Send + Sync + 'static> Default for Listener<T> {
@@ -153,7 +163,7 @@ impl<T: Send + Sync + 'static> Default for Listener<T> {
     /// let emitter = EventEmitter::<String>::default();
     /// ```
     fn default() -> Self {
-        Self::new(Arc::new(move |_: &EventPayload<T>| { println!("You wasted an Event, congrats!") }), Some(1))
+        Self::new(Arc::new(move |_: &EventPayload<T>| { /* no-op */ }), Some(1))
     }
 }
 impl<T> Debug for Listener<T> {
