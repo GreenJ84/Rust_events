@@ -32,40 +32,53 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     fn max_listeners(&self) -> usize;
 
 
-    /// Adds a listener with unlimited lifetime to the specified event.
+    /// Creates and adds a listener with unlimited lifetime to the specified event.
     ///
     /// # Parameters
     /// * `event_name` - The name of the event to listen to.
+    /// * `tag_name` - An optional tag name for the listener.
     /// * `callback` - The callback to invoke when the event is emitted.
     ///
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add(&mut self, event_name: &str, callback: Callback<T>) -> Result<Listener<T>, EventError>;
+    fn add(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError>;
 
-    /// Adds a listener with a limited number of allowed calls to the specified event.
+    /// Creates and adds a listener with a limited number of allowed calls to the specified event.
     ///
     /// # Parameters
     /// * `event_name` - The name of the event to listen to.
+    /// * `tag_name` - An optional tag name for the listener.
     /// * `callback` - The callback to invoke when the event is emitted.
     /// * `limit` - The maximum number of times the listener will be called before being removed.
     ///
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add_limited(&mut self, event_name: &str, callback: Callback<T>, limit: u64) -> Result<Listener<T>, EventError>;
+    fn add_limited(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>, limit: u64) -> Result<Listener<T>, EventError>;
 
-    /// Adds a listener that will be called only once for the specified event.
+    /// Creates and adds a listener that will be called only once for the specified event.
     ///
     /// # Parameters
     /// * `event_name` - The name of the event to listen to.
+    /// * `tag_name` - An optional tag name for the listener.
     /// * `callback` - The callback to invoke when the event is emitted.
     ///
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add_once(&mut self, event_name: &str, callback: Callback<T>) -> Result<Listener<T>, EventError>;
+    fn add_once(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError>;
 
+    /// Adds a listener for the specified event.
+    ///
+    /// # Parameters
+    /// * `event_name` - The name of the event to listen to.
+    /// * `listener` - The listener to add.
+    ///
+    /// # Returns
+    /// * `Ok(())` if the listener was added successfully.
+    /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
+    fn add_listener(&mut self, event_name: &str, listener: Listener<T>) -> Result<(), EventError>;
 
     /// Gets the number of listeners currently registered to the specified event.
     ///
@@ -95,13 +108,13 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     ///
     /// # Parameters
     /// * `event_name` - The name of the event.
-    /// * `callback` - The listener to remove.
+    /// * `listener` - The listener to remove.
     ///
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was removed successfully.
     /// * `Err(EventError::EventNotFound)` if the event is not registered.
     /// * `Err(EventError::ListenerNotFound)` if the listener is not found for the event.
-    fn remove_listener(&mut self, event_name: &str, callback: &Listener<T>) -> Result<Listener<T>, EventError>;
+    fn remove_listener(&mut self, event_name: &str, listener: &Listener<T>) -> Result<Listener<T>, EventError>;
 
     /// Removes all listeners from the specified event.
     ///
