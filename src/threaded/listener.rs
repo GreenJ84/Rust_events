@@ -6,7 +6,11 @@ use crate::{Callback, EventPayload};
 
 /// A handle for an event listener callback.
 ///
-/// `Listener<T>` wraps a callback and an optional lifetime counter, allowing for one-shot, limited, or unlimited event listeners.
+/// `Listener<T>` wraps a callback, an optional tag, and an optional lifetime counter, allowing for one-shot, limited, or unlimited event listeners.
+///
+/// # Tagging
+///
+/// The `tag` field (`Option<String>`) allows users to associate arbitrary metadata or an identifier with the listener. This is useful for tracking, grouping, or refreshing listeners in user code.
 ///
 /// # Thread Safety
 ///
@@ -14,24 +18,27 @@ use crate::{Callback, EventPayload};
 ///
 /// # Examples
 ///
-/// Basic usage:
+/// Basic usage with tag:
 /// ```
 /// use std::sync::Arc;
 /// use events::{Listener, EventPayload};
-/// let listener = Listener::new(Arc::new(|payload: &EventPayload<String>| {
+/// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|payload: &EventPayload<String>| {
 ///     println!("Got: {}", payload);
 /// }), None);
 /// ```
 pub struct Listener<T> {
+    tag: Option<String>,
     callback: Callback<T>,
     lifetime: Option<Arc<AtomicU64>>,
 }
 
 impl<T: Send + Sync + 'static> Listener<T> {
-    /// Create a new listener with an optional lifetime.
+    /// Create a new listener with an optional tag and lifetime.
     ///
-    /// If `lifetime` is `None` or `Some(0)`, the listener is unlimited.
-    /// If `lifetime` is `Some(n)`, the listener will be called at most `n` times.
+    /// # Parameters
+    /// * `tag` - Optional string tag for user metadata or identification.
+    /// * `callback` - The callback function to invoke when the event is emitted.
+    /// * `lifetime` - Optional call limit. If `None` or `Some(0)`, the listener is unlimited. If `Some(n)`, the listener will be called at most `n` times.
     ///
     /// # Examples
     ///
@@ -39,19 +46,19 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// # use std::sync::Arc;
     /// # use events::{Listener, EventPayload};
-    /// let listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), None);
+    /// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
     /// ```
     ///
     /// Limited:
     /// ```
     /// # use std::sync::Arc;
     /// # use events::{Listener, EventPayload};
-    /// let listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(3));
+    /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(3));
     /// ```
-    pub fn new(callback: Callback<T>, lifetime: Option<u64>) -> Self {
+    pub fn new(tag: Option<String>, callback: Callback<T>, lifetime: Option<u64>) -> Self {
         match lifetime {
-            Some(0) | None => Self { callback, lifetime: None },
-            Some(limit) => Self { callback, lifetime: Some(Arc::new(AtomicU64::new(limit))) },
+            Some(0) | None => Self { tag, callback, lifetime: None },
+            Some(limit) => Self { tag, callback, lifetime: Some(Arc::new(AtomicU64::new(limit))) },
         }
     }
 
@@ -191,12 +198,14 @@ impl<T: Send + Sync + 'static> Listener<T> {
 impl<T: Send + Sync + 'static> Clone for Listener<T> {
     fn clone(&self) -> Self {
         Self {
+            tag: self.tag.clone(),
             callback: Arc::clone(&self.callback),
             lifetime: self.lifetime.as_ref().map(Arc::clone),
         }
     }
 
     fn clone_from(&mut self, source: &Self) {
+        self.tag = source.tag.clone();
         self.callback = Arc::clone(&source.callback);
         self.lifetime = source.lifetime.as_ref().map(Arc::clone);
     }
@@ -210,7 +219,7 @@ impl<T: Send + Sync + 'static> Default for Listener<T> {
     /// let _ = Listener::<String>::default();
     /// ```
     fn default() -> Self {
-        Self::new(Arc::new(|_: &EventPayload<T>| {}), Some(1))
+        Self::new(None, Arc::new(|_: &EventPayload<T>| {}), Some(1))
     }
 }
 impl<T> Debug for Listener<T> {
@@ -222,7 +231,7 @@ impl<T> Debug for Listener<T> {
 }
 impl<T> PartialEq for Listener<T> {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.callback, &other.callback)
+        Arc::ptr_eq(&self.callback, &other.callback) && self.tag == other.tag
     }
 }
 impl<T> Eq for Listener<T> {}
