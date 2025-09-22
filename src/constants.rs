@@ -1,10 +1,10 @@
-#[cfg(feature = "threaded")]
-use std::sync::Arc;
-
 #[cfg(not(feature = "threaded"))]
 extern crate alloc;
 #[cfg(not(feature = "threaded"))]
 use alloc::sync::Arc;
+
+#[cfg(feature = "threaded")]
+use std::sync::Arc;
 
 /// Type alias for an event payload pointer.
 ///
@@ -12,9 +12,14 @@ use alloc::sync::Arc;
 ///
 /// # Example
 /// ```
-/// use alloc::sync::Arc; //(embedded/no_std)
-
-/// use std::sync::Arc;  //(threaded)
+/// #[cfg(not(feature = "threaded"))]
+/// extern crate alloc;
+/// #[cfg(not(feature = "threaded"))]
+/// use alloc::sync::Arc;
+///
+/// #[cfg(feature = "threaded")]
+/// use std::sync::Arc;
+///
 /// use events::{Callback, EventPayload};
 /// let payload: EventPayload<String> = Arc::new(String::from("Emitting value"));
 /// ```

@@ -9,12 +9,19 @@ pub enum EventError {
     /// Adding Listener:
     /// - Trying to add more than `max_listeners` to an Event.
     OverloadedEvent,
+
     /// Removing Listener/Emitting Event:
     /// - Trying to access a specific `Listener` that cannot be found.
     ListenerNotFound,
+
     /// Removing Listener/Emitting Event:
     /// Trying to access a specific `Event` that cannot be found.
     EventNotFound,
+
+    /// Any other possible Errors during Event Handling
+    #[cfg(not(feature = "threaded"))]
+    Other(&'static str, u16),
+
     /// Any other possible Errors during Event Handling
     #[cfg(feature = "threaded")]
     Other(Box<dyn std::error::Error + Send + Sync>),
@@ -25,8 +32,11 @@ impl PartialEq for EventError {
             (EventError::ListenerNotFound, EventError::ListenerNotFound) |
             (EventError::EventNotFound, EventError::EventNotFound) |
             (EventError::OverloadedEvent, EventError::OverloadedEvent) => true,
-            (EventError::Other(a), EventError::Other(b)) => a.to_string() == b.to_string(),
-            _ => false
+            #[cfg(not(feature = "threaded"))]
+            (EventError::Other(a1, a2), EventError::Other(b1, b2)) => a1 == b1 && a2 == b2,
+            _ => false,
+            #[cfg(feature = "threaded")]
+            (EventError::Other(a), EventError::Other(b)) => a.to_string() == b.to_string()
         }
     }
 }
@@ -38,9 +48,13 @@ impl core::fmt::Display for EventError {
             EventError::OverloadedEvent => write!(f, "Too many listeners for event"),
             EventError::ListenerNotFound => write!(f, "Listener not found"),
             EventError::EventNotFound => write!(f, "Event not found"),
-            EventError::Other(e) => write!(f, "Other error: {}", e),
+            #[cfg(not(feature = "threaded"))]
+            EventError::Other(msg, code) => write!(f, "Error: {} (code {})", msg, code),
+            #[cfg(feature = "threaded")]
+            EventError::Other(e) => write!(f, "Error: {}", e),
         }
     }
 }
 
+#[cfg(feature = "threaded")]
 impl std::error::Error for EventError {}
