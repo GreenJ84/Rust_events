@@ -62,6 +62,62 @@ impl<T: Send + Sync + 'static> Listener<T> {
         }
     }
 
+    /// Returns a reference to the tag associated with this listener, if any.
+    ///
+    /// # Returns
+    /// * `Some(&String)` if a tag was set for this listener.
+    /// * `None` if no tag was set.
+    ///
+    /// # Example
+    /// ```
+    /// use std::sync::Arc;
+    /// use events::{Listener, EventPayload};
+    /// let listener = Listener::new(Some("tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
+    /// assert_eq!(listener.tag(), Some(&"tag".to_string()));
+    /// ```
+    pub fn tag(&self) -> Option<&String> {
+        self.tag.as_ref()
+    }
+
+    /// Returns a reference to the callback function for this listener.
+    ///
+    /// # Returns
+    /// * `&Callback<T>` - The callback function that will be invoked when the event is emitted.
+    ///
+    /// # Example
+    /// ```
+    /// use std::sync::Arc;
+    /// use events::{Listener, EventPayload};
+    ///
+    /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), None);
+    /// let cb = listener.callback();
+    /// // cb can be called with a payload
+    /// ```
+    pub fn callback(&self) -> &Callback<T> {
+        &self.callback
+    }
+
+        /// Returns the lifetime remaining for this listener, if it has a limited lifetime.
+    ///
+    /// # Returns
+    /// * `Some(n)` if the listener was created with a limited lifetime, where `n` is the number of calls left before it is at limit.
+    /// * `None` if the listener is unlimited.
+    ///
+    /// # Example
+    /// ```
+    /// # use std::sync::Arc;
+    /// # use events::{Listener, EventPayload};
+    ///
+    /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(2));
+    /// assert_eq!(listener.lifetime(), Some(2));
+    ///
+    /// listener.call(&Arc::new("payload".to_string()));
+    /// assert_eq!(listener.lifetime(), Some(1));
+    /// ```
+    pub fn lifetime(&self) -> Option<u64> {
+        self.lifetime.as_ref().map(|l| l.load(Ordering::SeqCst))
+    }
+
     /// Returns whether the listener has reached its call limit.
     ///
     /// # Returns
@@ -85,25 +141,6 @@ impl<T: Send + Sync + 'static> Listener<T> {
         }
     }
 
-
-    /// Returns the number of remaining calls for this listener, if it has a limited lifetime.
-    ///
-    /// # Returns
-    /// * `Some(n)` if the listener was created with a limited lifetime, where `n` is the number of calls left before it is at limit.
-    /// * `None` if the listener is unlimited.
-    ///
-    /// # Example
-    /// ```
-    /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(2));
-    /// assert_eq!(listener.remaining_calls(), Some(2));
-    /// listener.call(&Arc::new("payload".to_string()));
-    /// assert_eq!(listener.remaining_calls(), Some(1));
-    /// ```
-    pub fn remaining_calls(&self) -> Option<u64> {
-        self.lifetime.as_ref().map(|l| l.load(Ordering::SeqCst))
-    }
 
     /// Synchronously invoke the callback with the given payload.
     ///
