@@ -15,8 +15,21 @@
 
 mod constants;
 mod error;
+
+#[cfg(not(feature = "threaded"))]
 mod base;
+#[cfg(feature = "threaded")]
 mod threaded;
 
 #[cfg(test)]
 mod tests;
+
+pub use crate::constants::*;
+pub use crate::error::*;
+
+#[cfg(feature = "threaded")]
+pub use threaded::{
+    listener::Listener,
+    event_emitter::EventEmitter,
+    event_handler::EventHandler
+};
