@@ -136,7 +136,7 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(())` if the event was emitted successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<(), EventError>;
+    fn emit(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError>;
 
     /// Emits the specified event synchronously for the last time, then removes all listeners.
     ///
@@ -160,7 +160,7 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// A `BoxFuture` that resolves to:
     /// * `Ok(())` if the event was emitted successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<(), EventError>>;
+    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>>;
 
     /// Emits the specified event asynchronously for the last time, then removes all listeners.
     ///
