@@ -72,7 +72,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// # use std::sync::Arc;
     /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(1));
+    /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// assert!(!listener.at_limit());
     /// listener.call(&Arc::new("payload".to_string()));
     /// assert!(listener.at_limit());
@@ -96,7 +96,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// # use std::sync::Arc;
     /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(2));
+    /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(2));
     /// assert_eq!(listener.remaining_calls(), Some(2));
     /// listener.call(&Arc::new("payload".to_string()));
     /// assert_eq!(listener.remaining_calls(), Some(1));
@@ -116,7 +116,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// # use std::sync::Arc;
     /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(1));
+    /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// listener.call(&Arc::new("payload".to_string()));
     /// ```
     #[inline]
@@ -140,11 +140,15 @@ impl<T: Send + Sync + 'static> Listener<T> {
     ///
     /// # Example
     /// ```
-    /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(1));
-    /// let handle = listener.background_call(&Arc::new("payload".to_string()));
-    /// assert!(handle.is_some());
+    /// use std::sync::Arc;
+    /// use tokio::runtime::Runtime;
+    /// use events::{Listener, EventPayload};
+    /// let rt = Runtime::new().unwrap();
+    /// rt.block_on(async {
+    ///     let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
+    ///     let handle = listener.background_call(&Arc::new("payload".to_string()));
+    ///     assert!(handle.is_some());
+    /// });
     /// ```
     #[inline]
     #[must_use]
@@ -173,10 +177,15 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// # use std::sync::Arc;
+    /// # use tokio::runtime::Runtime;
     /// # use events::{Listener, EventPayload};
-    /// let mut listener = Listener::new(Arc::new(|_: &EventPayload<String>| {}), Some(1));
-    /// let handle = listener.blocking_call(&Arc::new("payload".to_string()));
-    /// assert!(handle.is_some());
+    ///
+    /// let rt = Runtime::new().unwrap();
+    /// rt.block_on(async {
+    ///     let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
+    ///     let handle = listener.blocking_call(&Arc::new("payload".to_string()));
+    ///     assert!(handle.is_some());
+    /// });
     /// ```
     #[inline]
     #[must_use]
