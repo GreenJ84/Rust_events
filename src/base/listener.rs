@@ -213,6 +213,7 @@ impl<T> Default for Listener<T> {
 impl<T> core::fmt::Debug for Listener<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Listener")
+            .field("tag", &self.tag)
             .field("lifetime", &self.lifetime.as_ref().map(|a| a.load(Ordering::SeqCst)))
             .finish()
     }
