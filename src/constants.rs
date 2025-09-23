@@ -1,9 +1,9 @@
-#[cfg(not(feature = "threaded"))]
+#[cfg(feature = "no_std")]
 extern crate alloc;
-#[cfg(not(feature = "threaded"))]
+#[cfg(feature = "no_std")]
 use alloc::sync::Arc;
 
-#[cfg(feature = "threaded")]
+#[cfg(not(feature = "no_std"))]
 use std::sync::Arc;
 
 /// Type alias for an event payload pointer.
@@ -12,12 +12,12 @@ use std::sync::Arc;
 ///
 /// # Example
 /// ```
-/// #[cfg(not(feature = "threaded"))]
+/// #[cfg(feature = "no_std")]
 /// extern crate alloc;
-/// #[cfg(not(feature = "threaded"))]
+/// #[cfg(feature = "no_std")]
 /// use alloc::sync::Arc;
 ///
-/// #[cfg(feature = "threaded")]
+/// #[cfg(not(feature = "no_std"))]
 /// use std::sync::Arc;
 ///
 /// use events::{Callback, EventPayload};
@@ -39,7 +39,7 @@ pub type EventPayload<T> = Arc<T>;
 ///     println!("Received event: {}", payload);
 /// });
 /// ```
-#[cfg(not(feature = "threaded"))]
+#[cfg(feature = "no_std")]
 pub type Callback<T> = Arc<dyn Fn(&EventPayload<T>)>;
 
 /// Type alias for a callback pointer.
@@ -53,5 +53,5 @@ pub type Callback<T> = Arc<dyn Fn(&EventPayload<T>)>;
 /// let callback: Callback<String> = Arc::new(move |payload: &EventPayload<String>| {
 ///     println!("Received event: {}", payload);
 /// });
-#[cfg(feature = "threaded")]
+#[cfg(not(feature = "no_std"))]
 pub type Callback<T> = Arc<dyn Fn(&EventPayload<T>) + Send + Sync>;

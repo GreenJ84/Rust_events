@@ -1,5 +1,3 @@
-#![cfg_attr(not(feature = "threaded"), no_std)]
-
 //! # Rust Events Crate
 //!
 //! This crate provides a flexible, modular event system for Rust applications.

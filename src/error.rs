@@ -19,11 +19,11 @@ pub enum EventError {
     EventNotFound,
 
     /// Any other possible Errors during Event Handling
-    #[cfg(not(feature = "threaded"))]
+    #[cfg(feature = "no_std")]
     Other(&'static str, u16),
 
     /// Any other possible Errors during Event Handling
-    #[cfg(feature = "threaded")]
+    #[cfg(not(feature = "no_std"))]
     Other(Box<dyn std::error::Error + Send + Sync>),
 }
 impl PartialEq for EventError {
@@ -32,11 +32,11 @@ impl PartialEq for EventError {
             (EventError::ListenerNotFound, EventError::ListenerNotFound) |
             (EventError::EventNotFound, EventError::EventNotFound) |
             (EventError::OverloadedEvent, EventError::OverloadedEvent) => true,
-            #[cfg(not(feature = "threaded"))]
+            #[cfg(feature = "no_std")]
             (EventError::Other(a1, a2), EventError::Other(b1, b2)) => a1 == b1 && a2 == b2,
+            #[cfg(not(feature = "no_std"))]
+            (EventError::Other(a), EventError::Other(b)) => a.to_string() == b.to_string(),
             _ => false,
-            #[cfg(feature = "threaded")]
-            (EventError::Other(a), EventError::Other(b)) => a.to_string() == b.to_string()
         }
     }
 }
@@ -48,13 +48,13 @@ impl core::fmt::Display for EventError {
             EventError::OverloadedEvent => write!(f, "Too many listeners for event"),
             EventError::ListenerNotFound => write!(f, "Listener not found"),
             EventError::EventNotFound => write!(f, "Event not found"),
-            #[cfg(not(feature = "threaded"))]
+            #[cfg(feature = "no_std")]
             EventError::Other(msg, code) => write!(f, "Error: {} (code {})", msg, code),
-            #[cfg(feature = "threaded")]
+            #[cfg(not(feature = "no_std"))]
             EventError::Other(e) => write!(f, "Error: {}", e),
         }
     }
 }
 
-#[cfg(feature = "threaded")]
+#[cfg(not(feature = "no_std"))]
 impl std::error::Error for EventError {}
