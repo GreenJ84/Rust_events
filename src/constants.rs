@@ -32,6 +32,7 @@ pub type EventPayload<T> = Arc<T>;
 ///
 /// # Example (embedded/no_std)
 /// ```
+/// extern crate alloc;
 /// use alloc::sync::Arc;
 /// use events::{Callback, EventPayload};
 /// let callback: Callback<String> = Arc::new(move |payload: &EventPayload<String>| {
