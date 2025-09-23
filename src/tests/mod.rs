@@ -1,13 +1,13 @@
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "threaded")]
 mod threaded {
-    mod listener;
     mod event_emitter;
+    mod listener;
     mod payloads;
 }
 
-#[cfg(feature = "no_std")]
-mod base{
-    mod listener;
+#[cfg(not(feature = "threaded"))]
+mod base {
     mod event_emitter;
+    mod listener;
     mod payloads;
 }

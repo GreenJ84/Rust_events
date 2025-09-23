@@ -1,5 +1,8 @@
 use std::fmt::{Debug, Formatter};
-use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use tokio::task::JoinHandle;
 
 use crate::{Callback, EventPayload};
@@ -21,7 +24,7 @@ use crate::{Callback, EventPayload};
 /// Basic usage with tag:
 /// ```
 /// use std::sync::Arc;
-/// use events::{Listener, EventPayload};
+/// use rs_events::{Listener, EventPayload};
 /// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|payload: &EventPayload<String>| {
 ///     println!("Got: {}", payload);
 /// }), None);
@@ -45,20 +48,28 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// Unlimited:
     /// ```
     /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     /// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
     /// ```
     ///
     /// Limited:
     /// ```
     /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(3));
     /// ```
     pub fn new(tag: Option<String>, callback: Callback<T>, lifetime: Option<u64>) -> Self {
         match lifetime {
-            Some(0) | None => Self { tag, callback, lifetime: None },
-            Some(limit) => Self { tag, callback, lifetime: Some(Arc::new(AtomicU64::new(limit))) },
+            Some(0) | None => Self {
+                tag,
+                callback,
+                lifetime: None,
+            },
+            Some(limit) => Self {
+                tag,
+                callback,
+                lifetime: Some(Arc::new(AtomicU64::new(limit))),
+            },
         }
     }
 
@@ -71,7 +82,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     /// let listener = Listener::new(Some("tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
     /// assert_eq!(listener.tag(), Some(&"tag".to_string()));
     /// ```
@@ -87,7 +98,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), None);
     /// let cb = listener.callback();
@@ -97,7 +108,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
         &self.callback
     }
 
-        /// Returns the lifetime remaining for this listener, if it has a limited lifetime.
+    /// Returns the lifetime remaining for this listener, if it has a limited lifetime.
     ///
     /// # Returns
     /// * `Some(n)` if the listener was created with a limited lifetime, where `n` is the number of calls left before it is at limit.
@@ -106,7 +117,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     ///
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(2));
     /// assert_eq!(listener.lifetime(), Some(2));
@@ -127,7 +138,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// assert!(!listener.at_limit());
     /// listener.call(&Arc::new("payload".to_string()));
@@ -137,10 +148,9 @@ impl<T: Send + Sync + 'static> Listener<T> {
     pub fn at_limit(&self) -> bool {
         match self.lifetime {
             None => false,
-            Some(ref lifetime) =>  lifetime.load(Ordering::SeqCst) == 0
+            Some(ref lifetime) => lifetime.load(Ordering::SeqCst) == 0,
         }
     }
-
 
     /// Synchronously invoke the callback with the given payload.
     ///
@@ -152,18 +162,25 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// # Example
     /// ```
     /// # use std::sync::Arc;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// listener.call(&Arc::new("payload".to_string()));
     /// ```
     #[inline]
     pub fn call(&mut self, payload: &EventPayload<T>) {
         if let Some(ref lifetime) = self.lifetime {
-            if lifetime.fetch_update(
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-                |x| if x > 0 { Some(x - 1) } else { None }
-            ).is_err() { return; }
+            if lifetime
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
+                    if x > 0 {
+                        Some(x - 1)
+                    } else {
+                        None
+                    }
+                })
+                .is_err()
+            {
+                return;
+            }
         }
         (self.callback)(payload);
     }
@@ -179,7 +196,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// use std::sync::Arc;
     /// use tokio::runtime::Runtime;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     /// let rt = Runtime::new().unwrap();
     /// rt.block_on(async {
     ///     let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
@@ -191,14 +208,21 @@ impl<T: Send + Sync + 'static> Listener<T> {
     #[must_use]
     pub fn background_call(&mut self, payload: &EventPayload<T>) -> Option<JoinHandle<()>> {
         if let Some(ref lifetime) = self.lifetime {
-            if lifetime.fetch_update(
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-                |x| if x > 0 { Some(x - 1) } else { None }
-            ).is_err() { return None; }
+            if lifetime
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
+                    if x > 0 {
+                        Some(x - 1)
+                    } else {
+                        None
+                    }
+                })
+                .is_err()
+            {
+                return None;
+            }
         }
         let callback = Arc::clone(&self.callback);
-        let payload = Arc::clone(&payload);
+        let payload = Arc::clone(payload);
         Some(tokio::spawn(async move {
             callback(&payload);
         }))
@@ -215,7 +239,7 @@ impl<T: Send + Sync + 'static> Listener<T> {
     /// ```
     /// # use std::sync::Arc;
     /// # use tokio::runtime::Runtime;
-    /// # use events::{Listener, EventPayload};
+    /// # use rs_events::{Listener, EventPayload};
     ///
     /// let rt = Runtime::new().unwrap();
     /// rt.block_on(async {
@@ -228,17 +252,22 @@ impl<T: Send + Sync + 'static> Listener<T> {
     #[must_use]
     pub fn blocking_call(&mut self, payload: &EventPayload<T>) -> Option<JoinHandle<()>> {
         if let Some(ref lifetime) = self.lifetime {
-            if lifetime.fetch_update(
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-                |x| if x > 0 { Some(x - 1) } else { None }
-            ).is_err() { return None; }
+            if lifetime
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
+                    if x > 0 {
+                        Some(x - 1)
+                    } else {
+                        None
+                    }
+                })
+                .is_err()
+            {
+                return None;
+            }
         }
         let callback = Arc::clone(&self.callback);
-        let payload = Arc::clone(&payload);
-        Some(tokio::task::spawn_blocking(move || {
-            callback(&payload)
-        }))
+        let payload = Arc::clone(payload);
+        Some(tokio::task::spawn_blocking(move || callback(&payload)))
     }
 }
 impl<T: Send + Sync + 'static> Clone for Listener<T> {
@@ -261,7 +290,7 @@ impl<T: Send + Sync + 'static> Default for Listener<T> {
     ///
     /// # Example
     /// ```
-    /// use events::Listener;
+    /// use rs_events::Listener;
     /// let _ = Listener::<String>::default();
     /// ```
     fn default() -> Self {
@@ -271,7 +300,11 @@ impl<T: Send + Sync + 'static> Default for Listener<T> {
 impl<T> Debug for Listener<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Listener")
-            .field("lifetime", &self.lifetime.as_ref().map(|a| a.load(Ordering::SeqCst)))
+            .field("tag", &self.tag)
+            .field(
+                "lifetime",
+                &self.lifetime.as_ref().map(|a| a.load(Ordering::SeqCst)),
+            )
             .finish()
     }
 }

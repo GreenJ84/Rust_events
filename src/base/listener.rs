@@ -1,8 +1,5 @@
 extern crate alloc;
-use alloc::{
-    sync::Arc,
-    string::String,
-};
+use alloc::{string::String, sync::Arc};
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{Callback, EventPayload};
@@ -24,7 +21,7 @@ use crate::{Callback, EventPayload};
 ///     sync::Arc,
 ///     string::String,
 /// };
-/// use events::{Listener, EventPayload};
+/// use rs_events::{Listener, EventPayload};
 ///
 /// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|payload: &EventPayload<String>| {
 ///     // handle payload
@@ -53,7 +50,7 @@ impl<T> Listener<T> {
     ///     sync::Arc,
     ///     string::String,
     /// };
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let listener = Listener::new(Some("my_tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
     /// ```
@@ -62,13 +59,21 @@ impl<T> Listener<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(3));
     /// ```
     pub fn new(tag: Option<String>, callback: Callback<T>, lifetime: Option<u64>) -> Self {
         match lifetime {
-            Some(0) | None => Self { tag, callback, lifetime: None },
-            Some(limit) => Self { tag, callback, lifetime: Some(Arc::new(AtomicU64::new(limit))) },
+            Some(0) | None => Self {
+                tag,
+                callback,
+                lifetime: None,
+            },
+            Some(limit) => Self {
+                tag,
+                callback,
+                lifetime: Some(Arc::new(AtomicU64::new(limit))),
+            },
         }
     }
 
@@ -85,7 +90,7 @@ impl<T> Listener<T> {
     ///     sync::Arc,
     ///     string::String,
     /// };
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let listener = Listener::new(Some("tag".to_string()), Arc::new(|_: &EventPayload<String>| {}), None);
     /// assert_eq!(listener.tag(), Some(&"tag".to_string()));
@@ -103,7 +108,7 @@ impl<T> Listener<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), None);
     /// let cb = listener.callback();
@@ -123,7 +128,7 @@ impl<T> Listener<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(2));
     /// assert_eq!(listener.lifetime(), Some(2));
@@ -145,7 +150,7 @@ impl<T> Listener<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     ///
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// assert!(!listener.at_limit());
@@ -156,10 +161,9 @@ impl<T> Listener<T> {
     pub fn at_limit(&self) -> bool {
         match self.lifetime {
             None => false,
-            Some(ref lifetime) =>  lifetime.load(Ordering::SeqCst) == 0
+            Some(ref lifetime) => lifetime.load(Ordering::SeqCst) == 0,
         }
     }
-
 
     /// Synchronously invoke the callback with the given payload.
     ///
@@ -172,23 +176,28 @@ impl<T> Listener<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{Listener, EventPayload};
+    /// use rs_events::{Listener, EventPayload};
     /// let mut listener = Listener::new(None, Arc::new(|_: &EventPayload<String>| {}), Some(1));
     /// listener.call(&Arc::new("payload".to_string()));
     /// ```
     #[inline]
     pub fn call(&mut self, payload: &EventPayload<T>) {
         if let Some(ref lifetime) = self.lifetime {
-            if lifetime.fetch_update(
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-                |x| if x > 0 { Some(x - 1) } else { None }
-            ).is_err() { return; }
+            if lifetime
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
+                    if x > 0 {
+                        Some(x - 1)
+                    } else {
+                        None
+                    }
+                })
+                .is_err()
+            {
+                return;
+            }
         }
         (self.callback)(payload);
     }
-
-
 }
 impl<T> Clone for Listener<T> {
     fn clone(&self) -> Self {
@@ -214,7 +223,10 @@ impl<T> core::fmt::Debug for Listener<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Listener")
             .field("tag", &self.tag)
-            .field("lifetime", &self.lifetime.as_ref().map(|a| a.load(Ordering::SeqCst)))
+            .field(
+                "lifetime",
+                &self.lifetime.as_ref().map(|a| a.load(Ordering::SeqCst)),
+            )
             .finish()
     }
 }

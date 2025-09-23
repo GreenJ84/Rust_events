@@ -1,8 +1,8 @@
-use std::sync::Arc;
 use dashmap::DashMap;
-use futures::future::{BoxFuture, join_all};
+use futures::future::{join_all, BoxFuture};
+use std::sync::Arc;
 
-use crate::{EventHandler, Listener, Callback, EventError, EventPayload};
+use crate::{Callback, EventError, EventHandler, EventPayload, Listener};
 
 /// An event emitter that manages listeners and event emissions for a given payload type.
 ///
@@ -32,7 +32,7 @@ impl<T: Send + Sync> EventEmitter<T> {
     /// # Example
     ///
     /// ```
-    /// use crate::events::{EventEmitter, EventHandler};
+    /// use crate::rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter = EventEmitter::<String>::new(20);
     /// assert_eq!(emitter.max_listeners(), 20);
@@ -50,7 +50,7 @@ impl<T: Send + Sync> EventEmitter<T> {
     ///
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let events_map = emitter.events();
@@ -72,7 +72,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("event_one", None, Arc::new(|_|{})).expect("Failed to add");
@@ -84,31 +84,38 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert!(event_names.contains(&"event_two".to_string()));
     /// ```
     fn event_names(&self) -> Vec<String> {
-        self.events.iter().map(|entry| entry.key().clone()).collect()
+        self.events
+            .iter()
+            .map(|entry| entry.key().clone())
+            .collect()
     }
 
     /// Sets the maximum number of listeners allowed for any single event.
     ///
     /// # Example
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(5);
     /// emitter.set_max_listeners(3);
     /// assert_eq!(emitter.max_listeners(), 3);
     /// ```
-    fn set_max_listeners(&mut self, max: usize) { self.max_listeners = max; }
+    fn set_max_listeners(&mut self, max: usize) {
+        self.max_listeners = max;
+    }
 
     /// Gets the current maximum number of listeners allowed for any event.
     ///
     /// # Example
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter = EventEmitter::<String>::new(7);
     /// assert_eq!(emitter.max_listeners(), 7);
     /// ```
-    fn max_listeners(&self) -> usize { self.max_listeners }
+    fn max_listeners(&self) -> usize {
+        self.max_listeners
+    }
 
     /// Returns the number of listeners currently registered for the specified event.
     ///
@@ -122,7 +129,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", None, Arc::new(|_|{})).expect("Failed to add");
@@ -149,7 +156,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add("test_event", Some("tag1".to_string()), Arc::new(|_|{})).unwrap();
@@ -158,7 +165,12 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.lifetime(), None);
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError> {
+    fn add(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError> {
         self.add_limited(event_name, tag_name, callback, 0)
     }
 
@@ -177,7 +189,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add_limited("test_event", Some("tag2".to_string()), Arc::new(|_|{}), 3).unwrap();
@@ -186,13 +198,19 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.tag(), Some(&"tag2".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add_limited(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>, limit: u64) -> Result<Listener<T>, EventError> {
+    fn add_limited(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+        limit: u64,
+    ) -> Result<Listener<T>, EventError> {
         let mut entry = self.events.entry(event_name.to_string()).or_default();
         if entry.len() < self.max_listeners {
             let listener = Listener::new(
                 tag_name,
                 callback,
-                if limit > 0 { Some(limit) } else { None }
+                if limit > 0 { Some(limit) } else { None },
             );
             entry.push(listener.clone());
             return Ok(listener);
@@ -214,7 +232,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add_once("test_event", Some("tag3".to_string()), Arc::new(|_|{})).unwrap();
@@ -223,7 +241,12 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.tag(), Some(&"tag3".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add_once(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError> {
+    fn add_once(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError> {
         self.add_limited(event_name, tag_name, callback, 1)
     }
 
@@ -240,7 +263,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = Listener::new(Some("tag4".to_string()), Arc::new(|_: &EventPayload<String>| {}), Some(4));
@@ -271,7 +294,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add("test_event", Some("tag".to_string()), Arc::new(|_: &EventPayload<String>| {})).ok().unwrap();
@@ -281,13 +304,17 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(removed.tag(), Some(&"tag".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 0);
     /// ```
-    fn remove_listener(&mut self, event_name: &str, listener: &Listener<T>) -> Result<Listener<T>, EventError> {
+    fn remove_listener(
+        &mut self,
+        event_name: &str,
+        other: &Listener<T>,
+    ) -> Result<Listener<T>, EventError> {
         if let Some(mut entry) = self.events.get_mut(event_name) {
             let original_len = entry.len();
-            entry.retain(|listener| !listener.eq(listener));
+            entry.retain(|listener| !listener.eq(other));
 
             return if entry.len() < original_len {
-                Ok(listener.clone())
+                Ok(other.clone())
             } else {
                 Err(EventError::ListenerNotFound)
             };
@@ -307,7 +334,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     ///
@@ -343,7 +370,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     ///
@@ -356,7 +383,11 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(removed.len(), 1);
     /// assert_eq!(removed[0].tag(), Some(&"once".to_string()));
     /// ```
-    fn emit(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError> {
+    fn emit(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError> {
         if let Some(mut entry) = self.events().get_mut(event_name) {
             for listener in entry.iter_mut() {
                 listener.call(&payload);
@@ -389,7 +420,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// # Example
     /// ```
     /// use std::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", Some("unlimited".to_string()), Arc::new(|_| {})).unwrap();
@@ -398,17 +429,24 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// let removed = emitter.emit_final("test_event", Arc::new("sync".to_string())).unwrap();
     /// assert_eq!(removed.len(), 2);
     /// ```
-    fn emit_final(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError> {
+    fn emit_final(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError> {
+        let removed: Vec<Listener<T>>;
         if let Some(mut entry) = self.events().get_mut(event_name) {
             // Call all listeners
             for listener in entry.iter_mut() {
                 listener.call(&payload);
             }
             // Drain and return all listeners for this event (avoids DashMap deadlock)
-            let removed: Vec<Listener<T>> = entry.drain(..).collect();
-            return Ok(removed);
+            removed = entry.drain(..).collect();
+        } else {
+            return Err(EventError::EventNotFound);
         }
-        Err(EventError::EventNotFound)
+        self.events().remove(event_name);
+        Ok(removed)
     }
 
     /// Emits the specified event asynchronously, invoking all registered listeners.
@@ -427,7 +465,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// use std::sync::Arc;
     /// use tokio::runtime::Runtime;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", Some("unlimited".to_string()), Arc::new(|payload| {
@@ -443,17 +481,21 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     ///     assert_eq!(removed[0].tag(), Some(&"once".to_string()));
     /// });
     /// ```
-    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>> {
+    fn emit_async<'a>(
+        &'a mut self,
+        event_name: &'a str,
+        payload: EventPayload<T>,
+        parallel: bool,
+    ) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>> {
         Box::pin(async move {
             if let Some(mut entry) = self.events.get_mut(event_name) {
-                let handles = entry.iter_mut()
-                    .filter_map(|listener| {
-                        if parallel {
-                            listener.background_call(&payload)
-                        } else {
-                            listener.blocking_call(&payload)
-                        }
-                    });
+                let handles = entry.iter_mut().filter_map(|listener| {
+                    if parallel {
+                        listener.background_call(&payload)
+                    } else {
+                        listener.blocking_call(&payload)
+                    }
+                });
                 join_all(handles).await;
 
                 // Remove listeners that are at their limit and collect them
@@ -490,7 +532,7 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// use std::sync::Arc;
     /// use tokio::runtime::Runtime;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", Some("unlimited".to_string()), Arc::new(|payload| {
@@ -506,22 +548,28 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     ///     assert_eq!(removed[1].tag(), Some(&"once".to_string()));
     /// });
     /// ```
-    fn emit_final_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>> {
+    fn emit_final_async<'a>(
+        &'a mut self,
+        event_name: &'a str,
+        payload: EventPayload<T>,
+        parallel: bool,
+    ) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>> {
         Box::pin(async move {
             if let Some(mut entry) = self.events.get_mut(event_name) {
-                let handles = entry.iter_mut()
-                    .filter_map(|listener| {
-                        if parallel {
-                            listener.background_call(&payload)
-                        } else {
-                            listener.blocking_call(&payload)
-                        }
-                    });
+                let handles = entry.iter_mut().filter_map(|listener| {
+                    if parallel {
+                        listener.background_call(&payload)
+                    } else {
+                        listener.blocking_call(&payload)
+                    }
+                });
                 join_all(handles).await;
             } else {
                 return Err(EventError::EventNotFound);
             }
-            let removed = self.events().remove(event_name)
+            let removed = self
+                .events()
+                .remove(event_name)
                 .map(|(_, listeners)| listeners)
                 .unwrap_or_default();
             Ok(removed)
@@ -529,13 +577,13 @@ impl<T: Send + Sync> EventHandler<T> for EventEmitter<T> {
     }
 }
 
-impl<T: Send + Sync> Default for EventEmitter<T>{
+impl<T: Send + Sync> Default for EventEmitter<T> {
     /// Creates a new `EventEmitter<T>` with a default max listeners of 10.
     ///
     /// # Example
     ///
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter: EventEmitter<String> = EventEmitter::default();
     /// assert_eq!(emitter.max_listeners(), 10);

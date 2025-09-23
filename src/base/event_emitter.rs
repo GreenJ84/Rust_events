@@ -1,12 +1,12 @@
 extern crate alloc;
 use alloc::{
+    collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
-    collections::BTreeMap,
 };
 use core::cell::RefCell;
 
-use crate::{EventHandler, Listener, Callback, EventError, EventPayload};
+use crate::{Callback, EventError, EventHandler, EventPayload, Listener};
 
 /// An event emitter that manages listeners and event emissions for a given payload type.
 ///
@@ -20,7 +20,7 @@ use crate::{EventHandler, Listener, Callback, EventError, EventPayload};
 /// - All listeners for an event are stored in a `Vec` under the event's name.
 /// - Designed for high-performance, event-driven applications in no_std + alloc environments.
 #[derive(Clone)]
-pub struct EventEmitter<T>{
+pub struct EventEmitter<T> {
     /// The maximum number of listeners allowed per event.
     max_listeners: usize,
     /// The concurrent map of event names to their listeners.
@@ -33,7 +33,7 @@ impl<T> EventEmitter<T> {
     /// # Example
     ///
     /// ```
-    /// use crate::events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter = EventEmitter::<String>::new(20);
     /// assert_eq!(emitter.max_listeners(), 20);
@@ -52,7 +52,7 @@ impl<T> EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// {
@@ -77,7 +77,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("event_one", None, Arc::new(|_|{})).expect("Failed to add");
@@ -89,31 +89,39 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert!(event_names.contains(&"event_two".to_string()));
     /// ```
     fn event_names(&self) -> Vec<String> {
-        self.events.borrow().iter().map(|entry| entry.0.clone()).collect()
+        self.events
+            .borrow()
+            .iter()
+            .map(|entry| entry.0.clone())
+            .collect()
     }
 
     /// Sets the maximum number of listeners allowed for any single event.
     ///
     /// # Example
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(5);
     /// emitter.set_max_listeners(3);
     /// assert_eq!(emitter.max_listeners(), 3);
     /// ```
-    fn set_max_listeners(&mut self, max: usize) { self.max_listeners = max; }
+    fn set_max_listeners(&mut self, max: usize) {
+        self.max_listeners = max;
+    }
 
     /// Gets the current maximum number of listeners allowed for any event.
     ///
     /// # Example
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter = EventEmitter::<String>::new(7);
     /// assert_eq!(emitter.max_listeners(), 7);
     /// ```
-    fn max_listeners(&self) -> usize { self.max_listeners }
+    fn max_listeners(&self) -> usize {
+        self.max_listeners
+    }
 
     /// Returns the number of listeners currently registered for the specified event.
     ///
@@ -128,14 +136,15 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", None, Arc::new(|_|{})).expect("Failed to add");
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
     fn listener_count(&self, event_name: &str) -> Result<usize, EventError> {
-        self.events.borrow()
+        self.events
+            .borrow()
             .get(event_name)
             .map(|entry| entry.len())
             .ok_or(EventError::EventNotFound)
@@ -156,7 +165,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add("test_event", Some("tag1".to_string()), Arc::new(|_|{})).unwrap();
@@ -165,7 +174,12 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.lifetime(), None);
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError> {
+    fn add(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError> {
         self.add_limited(event_name, tag_name, callback, 0)
     }
 
@@ -185,7 +199,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add_limited("test_event", Some("tag2".to_string()), Arc::new(|_|{}), 3).unwrap();
@@ -194,14 +208,20 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.tag(), Some(&"tag2".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add_limited(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>, limit: u64) -> Result<Listener<T>, EventError> {
+    fn add_limited(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+        limit: u64,
+    ) -> Result<Listener<T>, EventError> {
         let mut events = self.events.borrow_mut();
         let listeners = events.entry(event_name.to_string()).or_default();
         if listeners.len() < self.max_listeners {
             let listener = Listener::new(
                 tag_name,
                 callback,
-                if limit > 0 { Some(limit) } else { None }
+                if limit > 0 { Some(limit) } else { None },
             );
             listeners.push(listener.clone());
             return Ok(listener);
@@ -224,7 +244,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add_once("test_event", Some("tag3".to_string()), Arc::new(|_|{})).unwrap();
@@ -233,7 +253,12 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(listener.tag(), Some(&"tag3".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 1);
     /// ```
-    fn add_once(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError> {
+    fn add_once(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError> {
         self.add_limited(event_name, tag_name, callback, 1)
     }
 
@@ -251,7 +276,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = Listener::new(Some("tag4".to_string()), Arc::new(|_: &EventPayload<String>| {}), Some(4));
@@ -284,7 +309,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// let listener = emitter.add("test_event", Some("tag".to_string()), Arc::new(|_: &EventPayload<String>| {})).ok().unwrap();
@@ -294,7 +319,11 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(removed.tag(), Some(&"tag".to_string()));
     /// assert_eq!(emitter.listener_count("test_event").unwrap(), 0);
     /// ```
-    fn remove_listener(&mut self, event_name: &str, listener: &Listener<T>) -> Result<Listener<T>, EventError> {
+    fn remove_listener(
+        &mut self,
+        event_name: &str,
+        listener: &Listener<T>,
+    ) -> Result<Listener<T>, EventError> {
         let mut events = self.events.borrow_mut();
         if let Some(entry) = events.get_mut(event_name) {
             let original_len = entry.len();
@@ -322,7 +351,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler, Listener, EventPayload};
+    /// use rs_events::{EventEmitter, EventHandler, Listener, EventPayload};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     ///
@@ -360,7 +389,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     ///
@@ -373,7 +402,11 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// assert_eq!(removed.len(), 1);
     /// assert_eq!(removed[0].tag(), Some(&"once".to_string()));
     /// ```
-    fn emit(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError> {
+    fn emit(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError> {
         let mut events = self.events.borrow_mut();
         if let Some(entry) = events.get_mut(event_name) {
             for listener in entry.iter_mut() {
@@ -408,7 +441,7 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// ```
     /// extern crate alloc;
     /// use alloc::sync::Arc;
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let mut emitter = EventEmitter::<String>::new(10);
     /// emitter.add("test_event", Some("unlimited".to_string()), Arc::new(|_| {})).unwrap();
@@ -417,31 +450,35 @@ impl<T> EventHandler<T> for EventEmitter<T> {
     /// let removed = emitter.emit_final("test_event", Arc::new("sync".to_string())).unwrap();
     /// assert_eq!(removed.len(), 2);
     /// ```
-    fn emit_final(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError> {
+    fn emit_final(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError> {
         let mut events = self.events.borrow_mut();
         match events.contains_key(event_name) {
             true => {
                 let entry = events.get_mut(event_name).unwrap();
-                    // Call all listeners
-                    for listener in entry.iter_mut() {
-                        listener.call(&payload);
-                    }
+                // Call all listeners
+                for listener in entry.iter_mut() {
+                    listener.call(&payload);
+                }
                 let removed = entry.drain(..).collect();
                 events.remove(event_name);
                 Ok(removed)
-            },
+            }
             false => Err(EventError::EventNotFound),
         }
     }
 }
 
-impl<T> Default for EventEmitter<T>{
+impl<T> Default for EventEmitter<T> {
     /// Creates a new `EventEmitter<T>` with a default max listeners of 10.
     ///
     /// # Example
     ///
     /// ```
-    /// use events::{EventEmitter, EventHandler};
+    /// use rs_events::{EventEmitter, EventHandler};
     ///
     /// let emitter: EventEmitter<String> = EventEmitter::default();
     /// assert_eq!(emitter.max_listeners(), 10);

@@ -1,6 +1,6 @@
 use futures::future::BoxFuture;
 
-use crate::{Listener, Callback, EventError, EventPayload};
+use crate::{Callback, EventError, EventPayload, Listener};
 
 /// Defines the contract for event-driven types that manage listeners and emit events.
 ///
@@ -31,7 +31,6 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// The maximum number of listeners as a `usize`.
     fn max_listeners(&self) -> usize;
 
-
     /// Creates and adds a listener with unlimited lifetime to the specified event.
     ///
     /// # Parameters
@@ -42,7 +41,12 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError>;
+    fn add(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError>;
 
     /// Creates and adds a listener with a limited number of allowed calls to the specified event.
     ///
@@ -55,7 +59,13 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add_limited(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>, limit: u64) -> Result<Listener<T>, EventError>;
+    fn add_limited(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+        limit: u64,
+    ) -> Result<Listener<T>, EventError>;
 
     /// Creates and adds a listener that will be called only once for the specified event.
     ///
@@ -67,7 +77,12 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(Listener<T>)` if the listener was added successfully.
     /// * `Err(EventError::OverloadedEvent)` if adding the listener would exceed the maximum allowed listeners for the event.
-    fn add_once(&mut self, event_name: &str, tag_name: Option<String>, callback: Callback<T>) -> Result<Listener<T>, EventError>;
+    fn add_once(
+        &mut self,
+        event_name: &str,
+        tag_name: Option<String>,
+        callback: Callback<T>,
+    ) -> Result<Listener<T>, EventError>;
 
     /// Adds a listener for the specified event.
     ///
@@ -88,7 +103,7 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(usize)` - The number of listeners registered to the event.
     /// * `Err(EventError::EventNotFound)` - If the event is not registered.
-    fn listener_count(&self, event_name: &str) ->  Result<usize, EventError>;
+    fn listener_count(&self, event_name: &str) -> Result<usize, EventError>;
 
     /// Returns `true` if the specified event has any registered listeners.
     ///
@@ -99,10 +114,9 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// * `Ok(true)` if there is at least one listener for the event.
     /// * `Ok(false)` if there are no listeners for the event.
     /// * `Err(EventError::EventNotFound)` if the event is not registered.
-    fn has_listener(&self, event_name: &str) ->  Result<bool, EventError> {
+    fn has_listener(&self, event_name: &str) -> Result<bool, EventError> {
         Ok(self.listener_count(event_name)? > 0)
     }
-
 
     /// Removes a specific listener from the specified event.
     ///
@@ -114,7 +128,11 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// * `Ok(Listener<T>)` if the listener was removed successfully.
     /// * `Err(EventError::EventNotFound)` if the event is not registered.
     /// * `Err(EventError::ListenerNotFound)` if the listener is not found for the event.
-    fn remove_listener(&mut self, event_name: &str, listener: &Listener<T>) -> Result<Listener<T>, EventError>;
+    fn remove_listener(
+        &mut self,
+        event_name: &str,
+        listener: &Listener<T>,
+    ) -> Result<Listener<T>, EventError>;
 
     /// Removes all listeners from the specified event.
     ///
@@ -126,7 +144,6 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
     fn remove_all_listeners(&mut self, event_name: &str) -> Result<Vec<Listener<T>>, EventError>;
 
-
     /// Emits the specified event synchronously, invoking all registered listeners.
     ///
     /// # Parameters
@@ -136,7 +153,11 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(())` if the event was emitted successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError>;
+    fn emit(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError>;
 
     /// Emits the specified event synchronously for the last time, then removes all listeners.
     ///
@@ -147,7 +168,11 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// # Returns
     /// * `Ok(Vec<Listener<T>>)` if the event was emitted and listeners were removed successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit_final(&mut self, event_name: &str, payload: EventPayload<T>) -> Result<Vec<Listener<T>>, EventError>;
+    fn emit_final(
+        &mut self,
+        event_name: &str,
+        payload: EventPayload<T>,
+    ) -> Result<Vec<Listener<T>>, EventError>;
 
     /// Emits the specified event asynchronously, invoking all registered listeners.
     ///
@@ -160,7 +185,12 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// A `BoxFuture` that resolves to:
     /// * `Ok(())` if the event was emitted successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>>;
+    fn emit_async<'a>(
+        &'a mut self,
+        event_name: &'a str,
+        payload: EventPayload<T>,
+        parallel: bool,
+    ) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>>;
 
     /// Emits the specified event asynchronously for the last time, then removes all listeners.
     ///
@@ -173,5 +203,10 @@ pub trait EventHandler<T: Send + Sync>: Send + Sync {
     /// A `BoxFuture` that resolves to:
     /// * `Ok(Vec<Listener<T>>) ` if the event was emitted and listeners were removed successfully.
     /// * `Err(EventError::EventNotFound)` if the event has not been registered.
-    fn emit_final_async<'a>(&'a mut self, event_name: &'a str, payload: EventPayload<T>, parallel: bool) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>>;
+    fn emit_final_async<'a>(
+        &'a mut self,
+        event_name: &'a str,
+        payload: EventPayload<T>,
+        parallel: bool,
+    ) -> BoxFuture<'a, Result<Vec<Listener<T>>, EventError>>;
 }
