@@ -11,25 +11,31 @@
 //! By default, the crate uses the `threaded` (multi-threaded, async) implementation.
 //! All core types are exported from the `threaded` module.
 //!
-//! For embedded or single-threaded use, see the `base` module (not exported by default).
+//! For embedded or single-threaded use, see the `base` module (not exported by default). Use the base crate with the `no_std` feature enabled.
 
 mod constants;
-mod error;
-
-#[cfg(not(feature = "threaded"))]
-mod base;
-#[cfg(feature = "threaded")]
-mod threaded;
-
-#[cfg(test)]
-mod tests;
-
 pub use crate::constants::*;
+
+mod error;
 pub use crate::error::*;
 
-#[cfg(feature = "threaded")]
+#[cfg(feature = "no_std")]
+mod base;
+#[cfg(feature = "no_std")]
+pub use base::{
+    listener::Listener,
+    event_emitter::EventEmitter,
+    event_handler::EventHandler
+};
+
+#[cfg(not(feature = "no_std"))]
+mod threaded;
+#[cfg(not(feature = "no_std"))]
 pub use threaded::{
     listener::Listener,
     event_emitter::EventEmitter,
     event_handler::EventHandler
 };
+
+#[cfg(test)]
+mod tests;
