@@ -1,16 +1,31 @@
 [package]
-name = "events"
-version = "0.1.0"
+name = "rs_events"
+version = "1.0.0"
 edition = "2021"
-authors = ["Jesse Greenough"]
-description = ""
+authors = ["Jesse Greenough <jesse.greenough84@gmail.com>"]
+description = "A flexible and ergonomic event emission crate for Rust. Supports both std/threaded and no_std/alloc environments, with tagging, listener lifetimes, async/sync emission, and robust error handling."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/GreenJ84/Rust_events_crate"
+homepage = "https://github.com/GreenJ84/Rust_events_crate"
+documentation = "https://docs.rs/rust_events"
+keywords = ["events", "event_emitter", "listener", "async", "threaded", "no_std"]
+categories = ["asynchronous", "concurrency", "embedded", "no-std"]
+readme = "README.md"
 
-[dependencies]
-std = { optional = true }
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "macros", "time"] }
-tokio-test = "0.4.4"
-dashmap = "6.1.0"
-futures = "0.3.31"
+[package.metadata.docs.rs]
+features = ["threaded"]
+no-default-features = true
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-no_std = []
+default = ["threaded"]
+threaded = ["tokio", "dashmap", "futures"]
+
+[dependencies]
+tokio = { version = "1.47.1", optional = true, features = ["rt-multi-thread", "macros"] }
+dashmap = { version = "6.1.0", optional = true }
+futures = { version = "0.3.31", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4.4"
