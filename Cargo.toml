@@ -6,7 +6,11 @@ authors = ["Jesse Greenough"]
 description = ""
 
 [dependencies]
-tokio = { version = "1.43.0", features = ["rt-multi-thread", "sync", "macros", "time"] }
+std = { optional = true }
+tokio = { version = "1.47.1", features = ["rt-multi-thread", "sync", "macros", "time"] }
 tokio-test = "0.4.4"
-dashmap = "7.0.0-rc1"
+dashmap = "6.1.0"
 futures = "0.3.31"
+
+[features]
+no_std = []
