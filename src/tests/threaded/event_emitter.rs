@@ -1,6 +1,9 @@
-use std::sync::{Arc, atomic::{Ordering, AtomicU64}};
+use crate::{EventEmitter, EventError, EventHandler, EventPayload, Listener};
 use std::string::{String, ToString};
-use crate::{EventEmitter, EventHandler, Listener, EventError, EventPayload};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 /// Test adding listeners of different types and verifying their properties
 #[test]
@@ -10,20 +13,25 @@ fn add_listeners_variety() {
     let cb: Arc<dyn Fn(&EventPayload<String>) + Send + Sync> = Arc::new(|_| {});
 
     // Add unlimited listener
-    let l1 = emitter.add("event", Some("tag1".to_string()), cb.clone()).unwrap();
+    let l1 = emitter
+        .add("event", Some("tag1".to_string()), cb.clone())
+        .unwrap();
     assert_eq!(l1.tag(), Some(&"tag1".to_string()));
     assert_eq!(l1.lifetime(), None);
 
     // Add limited listener
-    let l2 = emitter.add_limited("event", Some("tag2".to_string()), cb.clone(), 2).unwrap();
+    let l2 = emitter
+        .add_limited("event", Some("tag2".to_string()), cb.clone(), 2)
+        .unwrap();
     assert_eq!(l2.tag(), Some(&"tag2".to_string()));
     assert_eq!(l2.lifetime(), Some(2));
 
     // Add once listener
-    let l3 = emitter.add_once("event", Some("tag3".to_string()), cb.clone()).unwrap();
+    let l3 = emitter
+        .add_once("event", Some("tag3".to_string()), cb.clone())
+        .unwrap();
     assert_eq!(l3.tag(), Some(&"tag3".to_string()));
     assert_eq!(l3.lifetime(), Some(1));
-
 
     assert_eq!(emitter.listener_count("event").unwrap(), 3);
 }
@@ -69,7 +77,6 @@ fn event_overload() {
     assert_eq!(res, Err(EventError::OverloadedEvent));
 }
 
-
 #[cfg(test)]
 mod removing_listeners {
     use super::*;
@@ -97,7 +104,6 @@ mod removing_listeners {
         assert_eq!(emitter.listener_count("test").unwrap_or(0), 0);
     }
 
-
     /// Remove all listeners from an event
     #[test]
     fn remove_all_listeners() {
@@ -119,19 +125,22 @@ mod removing_listeners {
         assert_eq!(returned.unwrap().len(), 10);
     }
 
-
     /// Removing a non-existent listener returns ListenerNotFound
     #[test]
     fn remove_invalid_listener_throws_error() {
-        let cb: Arc<dyn Fn(&EventPayload<String>) + Send + Sync> = Arc::new(|_| { });
+        let cb: Arc<dyn Fn(&EventPayload<String>) + Send + Sync> = Arc::new(|_| {});
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add("test", Some("tag1".to_string()), cb.clone()).unwrap();
+        emitter
+            .add("test", Some("tag1".to_string()), cb.clone())
+            .unwrap();
 
         let fake = Listener::new(None, Arc::new(|_| {}), None);
-        assert_eq!(emitter.remove_listener("test", &fake), Err(EventError::ListenerNotFound));
+        assert_eq!(
+            emitter.remove_listener("test", &fake),
+            Err(EventError::ListenerNotFound)
+        );
     }
-
 
     /// Removing from a non-existent event returns EventNotFound
     #[test]
@@ -142,10 +151,12 @@ mod removing_listeners {
         emitter.add("test", None, cb.clone()).unwrap();
 
         let fake = Listener::new(None, Arc::new(|_| {}), None);
-        assert_eq!(emitter.remove_listener("not_test", &fake), Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter.remove_listener("not_test", &fake),
+            Err(EventError::EventNotFound)
+        );
     }
 }
-
 
 #[cfg(test)]
 mod emitting_events {
@@ -166,7 +177,11 @@ mod emitting_events {
         for _ in 0..10 {
             assert!(emitter.emit("count", Arc::new("Test".to_string())).is_ok());
         }
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Event callbacks unsuccessful"
+        );
     }
 
     /// Emit one event with multiple listeners and verify all are called
@@ -184,7 +199,11 @@ mod emitting_events {
             emitter.add("count", None, cb.clone()).unwrap();
         }
         assert!(emitter.emit("count", Arc::new("Test".to_string())).is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Event callbacks unsuccessful"
+        );
     }
 
     /// Emit event for once listener and verify drop-off
@@ -197,16 +216,26 @@ mod emitting_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_once("count", Some("tag1".to_string()), cb.clone()).unwrap();
+        emitter
+            .add_once("count", Some("tag1".to_string()), cb.clone())
+            .unwrap();
 
         let falloff = emitter.emit("count", Arc::new("Increment".to_string()));
         assert!(falloff.is_ok(), "Emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 1, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            1,
+            "Event callbacks unsuccessful"
+        );
 
         // Falloff should contain the emitted event that fell off
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
 
         // Listener should be removed after 1 call
         assert_eq!(emitter.listener_count("count").unwrap_or(0), 0);
@@ -222,19 +251,29 @@ mod emitting_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_limited("count", Some("tag1".to_string()), cb.clone(), 5).unwrap();
+        emitter
+            .add_limited("count", Some("tag1".to_string()), cb.clone(), 5)
+            .unwrap();
         for _ in 0..4 {
             assert!(emitter.emit("count", Arc::new("Test".to_string())).is_ok());
         }
         // Fifth emit should return falloff
         let falloff = emitter.emit("count", Arc::new("Test".to_string()));
         assert!(falloff.is_ok(), "Emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 5, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            5,
+            "Event callbacks unsuccessful"
+        );
 
         // Falloff should contain the emitted event that has fired for the last time
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
 
         // Listener should be removed after 5 calls
         assert_eq!(emitter.listener_count("count").unwrap_or(0), 0);
@@ -242,7 +281,7 @@ mod emitting_events {
 }
 
 #[cfg(test)]
-mod emitting_final_events{
+mod emitting_final_events {
     use super::*;
 
     /// Emit final for unlimited listener and verify removal
@@ -255,20 +294,38 @@ mod emitting_final_events{
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add("count_final", Some("tag1".to_string()), cb.clone()).unwrap();
-        assert!(emitter.emit("count_final", Arc::new("Test".to_string())).is_ok(), "Regular emit failed");
+        emitter
+            .add("count_final", Some("tag1".to_string()), cb.clone())
+            .unwrap();
+        assert!(
+            emitter
+                .emit("count_final", Arc::new("Test".to_string()))
+                .is_ok(),
+            "Regular emit failed"
+        );
 
         // Final emit should remove listener
         let falloff = emitter.emit_final("count_final", Arc::new("Test".to_string()));
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Event callbacks unsuccessful"
+        );
 
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final("count_final", Arc::new("Test".to_string())), Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter.emit_final("count_final", Arc::new("Test".to_string())),
+            Err(EventError::EventNotFound)
+        );
     }
 
     /// Emit final for limited listener and verify removal
@@ -281,22 +338,40 @@ mod emitting_final_events{
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5).unwrap();
-        assert!(emitter.emit("count_final", Arc::new("Test".to_string())).is_ok(), "Regular emit failed");
+        emitter
+            .add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5)
+            .unwrap();
+        assert!(
+            emitter
+                .emit("count_final", Arc::new("Test".to_string()))
+                .is_ok(),
+            "Regular emit failed"
+        );
 
         // Final emit should remove listener
         let falloff = emitter.emit_final("count_final", Arc::new("Test".to_string()));
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Event callbacks unsuccessful"
+        );
 
         // Falloff should contain the emitted event that has fired for the last time
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
         assert_eq!(falloff[0].lifetime(), Some(3), "Unexpected event lifetime");
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final("count_final", Arc::new("Test".to_string())), Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter.emit_final("count_final", Arc::new("Test".to_string())),
+            Err(EventError::EventNotFound)
+        );
     }
 }
 
@@ -316,9 +391,16 @@ mod emit_async_events {
         let mut emitter = EventEmitter::<String>::default();
         emitter.add("async_event", None, cb.clone()).unwrap();
         for _ in 0..10 {
-            assert!(emitter.emit_async("async_event", Arc::new("AsyncTest".to_string()), false).await.is_ok());
+            assert!(emitter
+                .emit_async("async_event", Arc::new("AsyncTest".to_string()), false)
+                .await
+                .is_ok());
         }
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Async event callbacks unsuccessful"
+        );
     }
 
     #[tokio::test]
@@ -333,9 +415,16 @@ mod emit_async_events {
         let mut emitter = EventEmitter::<String>::default();
         emitter.add("async_event", None, cb.clone()).unwrap();
         for _ in 0..10 {
-            assert!(emitter.emit_async("async_event", Arc::new("AsyncTest".to_string()), true).await.is_ok());
+            assert!(emitter
+                .emit_async("async_event", Arc::new("AsyncTest".to_string()), true)
+                .await
+                .is_ok());
         }
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Async event callbacks unsuccessful"
+        );
     }
 
     #[tokio::test]
@@ -351,8 +440,15 @@ mod emit_async_events {
         for _ in 0..10 {
             emitter.add("async_event", None, cb.clone()).unwrap();
         }
-        assert!(emitter.emit_async("async_event", Arc::new("AsyncTest".to_string()), false).await.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Async event callbacks unsuccessful");
+        assert!(emitter
+            .emit_async("async_event", Arc::new("AsyncTest".to_string()), false)
+            .await
+            .is_ok());
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Async event callbacks unsuccessful"
+        );
     }
 
     #[tokio::test]
@@ -368,8 +464,15 @@ mod emit_async_events {
         for _ in 0..10 {
             emitter.add("async_event", None, cb.clone()).unwrap();
         }
-        assert!(emitter.emit_async("async_event", Arc::new("AsyncTest".to_string()), true).await.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 10, "Async event callbacks unsuccessful");
+        assert!(emitter
+            .emit_async("async_event", Arc::new("AsyncTest".to_string()), true)
+            .await
+            .is_ok());
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            10,
+            "Async event callbacks unsuccessful"
+        );
     }
 
     #[tokio::test]
@@ -381,38 +484,69 @@ mod emit_async_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_once("async", Some("once".to_string()), cb.clone()).unwrap();
-        emitter.add_limited("async", Some("limited".to_string()), cb.clone(), 5).unwrap();
+        emitter
+            .add_once("async", Some("once".to_string()), cb.clone())
+            .unwrap();
+        emitter
+            .add_limited("async", Some("limited".to_string()), cb.clone(), 5)
+            .unwrap();
 
         // Emit once and once listener should falloff
-        let falloff = emitter.emit_async("async", Arc::new("OnceTest".to_string()), false).await;
+        let falloff = emitter
+            .emit_async("async", Arc::new("OnceTest".to_string()), false)
+            .await;
         assert!(falloff.is_ok(), "Async emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async once callback unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async once callback unsuccessful"
+        );
 
         // Falloff should only contain the once listener
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("once".to_string()).as_ref(), "Unexpected event payload");
-        assert_eq!(emitter.listener_count("async").unwrap_or(0), 1, "Limited listener did not remain");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("once".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
+        assert_eq!(
+            emitter.listener_count("async").unwrap_or(0),
+            1,
+            "Limited listener did not remain"
+        );
 
         // Emit 4 more times, limited listener should falloff on 5th
         for _ in 0..3 {
-            assert!(emitter.emit_async("async", Arc::new("LimitedTest".to_string()), false).await.is_ok());
+            assert!(emitter
+                .emit_async("async", Arc::new("LimitedTest".to_string()), false)
+                .await
+                .is_ok());
         }
 
         // Emit 5th time and limited listener should falloff
-        let falloff = emitter.emit_async("async", Arc::new("OnceTest".to_string()), false).await;
+        let falloff = emitter
+            .emit_async("async", Arc::new("OnceTest".to_string()), false)
+            .await;
         assert!(falloff.is_ok(), "Async emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 6, "Async once callback unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            6,
+            "Async once callback unsuccessful"
+        );
 
         // Falloff should only contain the limited listener
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("limited".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("limited".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
         assert_eq!(emitter.listener_count("async").unwrap_or(0), 0);
     }
 
-        #[tokio::test]
+    #[tokio::test]
     async fn async_parallel_emission_drop_off_successful() {
         let called = Arc::new(AtomicU64::new(0));
         let called_clone = called.clone();
@@ -421,34 +555,65 @@ mod emit_async_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_once("async", Some("once".to_string()), cb.clone()).unwrap();
-        emitter.add_limited("async", Some("limited".to_string()), cb.clone(), 5).unwrap();
+        emitter
+            .add_once("async", Some("once".to_string()), cb.clone())
+            .unwrap();
+        emitter
+            .add_limited("async", Some("limited".to_string()), cb.clone(), 5)
+            .unwrap();
 
         // Emit once and once listener should falloff
-        let falloff = emitter.emit_async("async", Arc::new("OnceTest".to_string()), true).await;
+        let falloff = emitter
+            .emit_async("async", Arc::new("OnceTest".to_string()), true)
+            .await;
         assert!(falloff.is_ok(), "Async emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async once callback unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async once callback unsuccessful"
+        );
 
         // Falloff should only contain the once listener
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("once".to_string()).as_ref(), "Unexpected event payload");
-        assert_eq!(emitter.listener_count("async").unwrap_or(0), 1, "Limited listener did not remain");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("once".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
+        assert_eq!(
+            emitter.listener_count("async").unwrap_or(0),
+            1,
+            "Limited listener did not remain"
+        );
 
         // Emit 4 more times, limited listener should falloff on 5th
         for _ in 0..3 {
-            assert!(emitter.emit_async("async", Arc::new("LimitedTest".to_string()), true).await.is_ok());
+            assert!(emitter
+                .emit_async("async", Arc::new("LimitedTest".to_string()), true)
+                .await
+                .is_ok());
         }
 
         // Emit 5th time and limited listener should falloff
-        let falloff = emitter.emit_async("async", Arc::new("OnceTest".to_string()), true).await;
+        let falloff = emitter
+            .emit_async("async", Arc::new("OnceTest".to_string()), true)
+            .await;
         assert!(falloff.is_ok(), "Async emit failed");
-        assert_eq!(called.load(Ordering::SeqCst), 6, "Async once callback unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            6,
+            "Async once callback unsuccessful"
+        );
 
         // Falloff should only contain the limited listener
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("limited".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("limited".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
         assert_eq!(emitter.listener_count("async").unwrap_or(0), 0);
     }
 
@@ -468,17 +633,26 @@ mod emit_async_events {
             emitter.add("mix_event", None, cb.clone()).unwrap();
         }
         for _ in 0..3 {
-            emitter.add_limited("mix_event", None, cb.clone(), 2).unwrap();
+            emitter
+                .add_limited("mix_event", None, cb.clone(), 2)
+                .unwrap();
         }
         for _ in 0..2 {
             emitter.add_once("mix_event", None, cb.clone()).unwrap();
         }
         // Emit event 3 times
         for _ in 0..3 {
-            assert!(emitter.emit_async("mix_event", Arc::new("MixTest".to_string()), false).await.is_ok());
+            assert!(emitter
+                .emit_async("mix_event", Arc::new("MixTest".to_string()), false)
+                .await
+                .is_ok());
         }
         // Unlimited: 5*3, Limited: 3*2, Once: 2*1
-        assert_eq!(called.load(Ordering::SeqCst), 15 + 6 + 2, "Async mixed callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            15 + 6 + 2,
+            "Async mixed callbacks unsuccessful"
+        );
         // After all calls, only unlimited listeners remain
         assert_eq!(emitter.listener_count("mix_event").unwrap_or(0), 5);
     }
@@ -499,17 +673,26 @@ mod emit_async_events {
             emitter.add("mix_event", None, cb.clone()).unwrap();
         }
         for _ in 0..3 {
-            emitter.add_limited("mix_event", None, cb.clone(), 2).unwrap();
+            emitter
+                .add_limited("mix_event", None, cb.clone(), 2)
+                .unwrap();
         }
         for _ in 0..2 {
             emitter.add_once("mix_event", None, cb.clone()).unwrap();
         }
         // Emit event 3 times in parallel
         for _ in 0..3 {
-            assert!(emitter.emit_async("mix_event", Arc::new("MixTest".to_string()), true).await.is_ok());
+            assert!(emitter
+                .emit_async("mix_event", Arc::new("MixTest".to_string()), true)
+                .await
+                .is_ok());
         }
         // Unlimited: 5*3, Limited: 3*2, Once: 2*1
-        assert_eq!(called.load(Ordering::SeqCst), 15 + 6 + 2, "Async mixed callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            15 + 6 + 2,
+            "Async mixed callbacks unsuccessful"
+        );
         // After all calls, only unlimited listeners remain
         assert_eq!(emitter.listener_count("mix_event").unwrap_or(0), 5);
     }
@@ -528,20 +711,43 @@ mod emit_async_final_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add("count_final", Some("tag1".to_string()), cb.clone()).unwrap();
-        assert!(emitter.emit_async("count_final", Arc::new("Test".to_string()), false).await.is_ok(), "Regular async emit failed");
+        emitter
+            .add("count_final", Some("tag1".to_string()), cb.clone())
+            .unwrap();
+        assert!(
+            emitter
+                .emit_async("count_final", Arc::new("Test".to_string()), false)
+                .await
+                .is_ok(),
+            "Regular async emit failed"
+        );
 
         // Final async emit should remove listener
-        let falloff = emitter.emit_final_async("count_final", Arc::new("Test".to_string()), false).await;
+        let falloff = emitter
+            .emit_final_async("count_final", Arc::new("Test".to_string()), false)
+            .await;
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async event callbacks unsuccessful"
+        );
 
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final_async("count_final", Arc::new("Test".to_string()), false).await, Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter
+                .emit_final_async("count_final", Arc::new("Test".to_string()), false)
+                .await,
+            Err(EventError::EventNotFound)
+        );
     }
 
     #[tokio::test]
@@ -553,20 +759,43 @@ mod emit_async_final_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add("count_final", Some("tag1".to_string()), cb.clone()).unwrap();
-        assert!(emitter.emit_async("count_final", Arc::new("Test".to_string()), true).await.is_ok(), "Regular async emit failed");
+        emitter
+            .add("count_final", Some("tag1".to_string()), cb.clone())
+            .unwrap();
+        assert!(
+            emitter
+                .emit_async("count_final", Arc::new("Test".to_string()), true)
+                .await
+                .is_ok(),
+            "Regular async emit failed"
+        );
 
         // Final async emit should remove listener
-        let falloff = emitter.emit_final_async("count_final", Arc::new("Test".to_string()), true).await;
+        let falloff = emitter
+            .emit_final_async("count_final", Arc::new("Test".to_string()), true)
+            .await;
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async event callbacks unsuccessful"
+        );
 
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final_async("count_final", Arc::new("Test".to_string()), true).await, Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter
+                .emit_final_async("count_final", Arc::new("Test".to_string()), true)
+                .await,
+            Err(EventError::EventNotFound)
+        );
     }
 
     #[tokio::test]
@@ -578,21 +807,44 @@ mod emit_async_final_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5).unwrap();
-        assert!(emitter.emit_async("count_final", Arc::new("Test".to_string()), false).await.is_ok(), "Regular async emit failed");
+        emitter
+            .add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5)
+            .unwrap();
+        assert!(
+            emitter
+                .emit_async("count_final", Arc::new("Test".to_string()), false)
+                .await
+                .is_ok(),
+            "Regular async emit failed"
+        );
 
         // Final async emit should remove listener
-        let falloff = emitter.emit_final_async("count_final", Arc::new("Test".to_string()), false).await;
+        let falloff = emitter
+            .emit_final_async("count_final", Arc::new("Test".to_string()), false)
+            .await;
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async event callbacks unsuccessful"
+        );
 
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
         assert_eq!(falloff[0].lifetime(), Some(3), "Unexpected event lifetime");
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final_async("count_final", Arc::new("Test".to_string()), false).await, Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter
+                .emit_final_async("count_final", Arc::new("Test".to_string()), false)
+                .await,
+            Err(EventError::EventNotFound)
+        );
     }
 
     #[tokio::test]
@@ -604,20 +856,43 @@ mod emit_async_final_events {
         });
 
         let mut emitter = EventEmitter::<String>::default();
-        emitter.add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5).unwrap();
-        assert!(emitter.emit_async("count_final", Arc::new("Test".to_string()), true).await.is_ok(), "Regular async emit failed");
+        emitter
+            .add_limited("count_final", Some("tag1".to_string()), cb.clone(), 5)
+            .unwrap();
+        assert!(
+            emitter
+                .emit_async("count_final", Arc::new("Test".to_string()), true)
+                .await
+                .is_ok(),
+            "Regular async emit failed"
+        );
 
         // Final async emit should remove listener
-        let falloff = emitter.emit_final_async("count_final", Arc::new("Test".to_string()), true).await;
+        let falloff = emitter
+            .emit_final_async("count_final", Arc::new("Test".to_string()), true)
+            .await;
         assert!(falloff.is_ok());
-        assert_eq!(called.load(Ordering::SeqCst), 2, "Async event callbacks unsuccessful");
+        assert_eq!(
+            called.load(Ordering::SeqCst),
+            2,
+            "Async event callbacks unsuccessful"
+        );
 
         let falloff = falloff.unwrap();
         assert_eq!(falloff.len(), 1, "Expected 1 event to falloff");
-        assert_eq!(falloff[0].tag(), Some("tag1".to_string()).as_ref(), "Unexpected event payload");
+        assert_eq!(
+            falloff[0].tag(),
+            Some("tag1".to_string()).as_ref(),
+            "Unexpected event payload"
+        );
         assert_eq!(falloff[0].lifetime(), Some(3), "Unexpected event lifetime");
 
         // After final emit, event should be removed
-        assert_eq!(emitter.emit_final_async("count_final", Arc::new("Test".to_string()), true).await, Err(EventError::EventNotFound));
+        assert_eq!(
+            emitter
+                .emit_final_async("count_final", Arc::new("Test".to_string()), true)
+                .await,
+            Err(EventError::EventNotFound)
+        );
     }
 }
