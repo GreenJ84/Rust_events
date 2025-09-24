@@ -7,9 +7,9 @@ description = "A flexible and ergonomic event emission crate for Rust. Supports 
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/GreenJ84/Rust_events_crate"
 homepage = "https://github.com/GreenJ84/Rust_events_crate"
-documentation = "https://docs.rs/rust_events"
-keywords = ["events", "event_emitter", "listener", "async", "threaded", "no_std"]
-categories = ["asynchronous", "concurrency", "embedded", "no-std"]
+documentation = "https://docs.rs/rs_events"
+keywords = ["events", "event_emitter", "listener", "async", "no_std"]
+categories = ["asynchronous", "concurrency", "no-std"]
 readme = "README.md"
 
 [package.metadata.docs.rs]
