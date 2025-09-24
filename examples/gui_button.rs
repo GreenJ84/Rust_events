@@ -1,6 +1,7 @@
 //! Example: GUI button click event
+#![no_std]
 extern crate alloc;
-use alloc::sync::Arc;
+use alloc::{sync::Arc, string::{String, ToString}};
 use rs_events::{EventEmitter, EventHandler};
 
 fn main() {
@@ -10,7 +11,8 @@ fn main() {
             "button_click",
             None,
             Arc::new(|payload| {
-                println!("Button clicked: {}", payload.as_ref());
+                // Handle button click event
+                let _value = payload.as_ref();
             }),
         )
         .unwrap();
