@@ -1,5 +1,5 @@
 use dashmap::DashMap;
-use futures::future::{join_all, BoxFuture};
+use futures_util::future::{join_all, BoxFuture};
 use std::sync::Arc;
 
 use crate::{Callback, EventError, EventHandler, EventPayload, Listener};

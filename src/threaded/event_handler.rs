@@ -1,4 +1,4 @@
-use futures::future::BoxFuture;
+use futures_util::future::BoxFuture;
 
 use crate::{Callback, EventError, EventPayload, Listener};
 

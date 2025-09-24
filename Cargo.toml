@@ -20,12 +20,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["threaded"]
-threaded = ["tokio", "dashmap", "futures"]
+threaded = ["tokio", "dashmap", "futures-util"]
 
 [dependencies]
-tokio = { version = "1.47.1", optional = true, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.47.1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
 dashmap = { version = "6.1.0", optional = true }
-futures = { version = "0.3.31", optional = true }
+futures-util = { version = "0.3.31", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4.4"
