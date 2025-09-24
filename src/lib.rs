@@ -2,7 +2,7 @@
 //!
 //! This crate provides a flexible, modular event system for Rust applications.
 //!
-//! - **Listener**: Represents a callback that can be registered to an event.
+//! - **Listener**: Represents a struct that holds a tag (optional), callback, and lifetime (optional) which can be registered to an event.
 //! - **EventEmitter**: Manages event registration and emission.
 //! - **EventHandler**: Trait defining the event API.
 //!
@@ -11,7 +11,7 @@
 //!
 //! ## Usage Examples
 //!
-//! ### Threaded (default)
+//! **Threaded (default)**
 //! ```rust
 //! use rs_events::{EventEmitter, EventPayload, EventHandler};
 //! use std::sync::Arc;
@@ -23,7 +23,7 @@
 //! emitter.emit("event", Arc::new("Hello World".to_string())).unwrap();
 //! ```
 //!
-//! ### no_std/alloc
+//! **no_std/alloc**
 //! Build with:
 //! ```shell
 //! cargo build --no-default-features

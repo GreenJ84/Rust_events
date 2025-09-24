@@ -1,6 +1,6 @@
 [package]
 name = "rs_events"
-version = "1.0.0"
+version = "0.1.0"
 edition = "2021"
 authors = ["Jesse Greenough <jesse.greenough84@gmail.com>"]
 description = "A flexible and ergonomic event emission crate for Rust. Supports both std/threaded and no_std/alloc environments, with tagging, listener lifetimes, async/sync emission, and robust error handling."
