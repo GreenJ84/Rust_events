@@ -1,7 +1,10 @@
 //! Example: GUI button click event
 #![no_std]
 extern crate alloc;
-use alloc::{sync::Arc, string::{String, ToString}};
+use alloc::{
+    string::{String, ToString},
+    sync::Arc,
+};
 use rs_events::{EventEmitter, EventHandler};
 
 fn main() {
